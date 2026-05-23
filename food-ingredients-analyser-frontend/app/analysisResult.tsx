@@ -20,14 +20,14 @@ export default function AnalysisResultScreen() {
     try {
       if (params.result) {
         const parsed = JSON.parse(params.result);
-        console.log("✅ Отримані дані на екрані:", parsed);
+        console.log("✅ RESULT:", parsed);
         setData(parsed);
       } else {
         setError("Дані не отримані");
       }
     } catch (e) {
-      console.error("❌ Помилка парсингу:", e);
-      setError("Помилка обробки результатів");
+      console.error("❌ JSON error:", e);
+      setError("Помилка обробки результату");
     }
   }, [params.result]);
 
@@ -46,26 +46,41 @@ export default function AnalysisResultScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#2a5a43" />
-        <Text style={{ marginTop: 10, color: "#2a5a43" }}>
-          Завантаження результату...
-        </Text>
+        <Text style={styles.loadingText}>Завантаження результату...</Text>
       </View>
     );
   }
 
-  const analysis = data.analysis_result || {};
+  // Витягуємо дані з обгортки analysis_result, якщо вона прийшла з бекенду
+  const resultData = data.analysis_result ? data.analysis_result : data;
+  const checkError = resultData.error;
+
+  // Якщо бекенд (або промпт) повернув помилку
+  if (checkError) {
+    return (
+      <View style={styles.centered}>
+        <View style={styles.errorCard}>
+          <Text style={styles.errorCardTitle}>Упс!</Text>
+          <Text style={styles.errorCardText}>{checkError}</Text>
+        </View>
+        <Pressable onPress={() => router.back()} style={styles.button}>
+          <Text style={styles.buttonText}>Спробувати інше фото</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Беремо всі необхідні поля зі справжніх даних
   const {
     product_name,
-    consumer_explanation,
+    translated_product_name,
+    user_note,
     ingredients = [],
-    allergens = [],
-    intolerances = [],
-    restrictions = {},
-  } = analysis;
+  } = resultData;
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* HEADER */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
@@ -74,153 +89,134 @@ export default function AnalysisResultScreen() {
         <View style={{ width: 44 }} />
       </View>
 
-      {/* Scrollable Content */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Назва продукту */}
-        {product_name && <Text style={styles.productName}>{product_name}</Text>}
-
-        {/* Пояснення споживачу */}
-        {consumer_explanation && (
-          <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>ℹ️ Пояснення споживачу</Text>
-            <Text style={styles.text}>{consumer_explanation}</Text>
+        {/* БЛОК НАЗВИ ПРОДУКТУ */}
+        {(!!product_name || !!translated_product_name) && (
+          <View style={styles.titleContainer}>
+            {!!product_name && (
+              <Text style={styles.productName}>{product_name}</Text>
+            )}
+            {!!translated_product_name && (
+              <Text style={styles.translatedName}>
+                {translated_product_name}
+              </Text>
+            )}
           </View>
         )}
 
-        {/* Інгредієнти */}
+        {/* ВІДПОВІДЬ НА ЗАПИТ КОРИСТУВАЧА (Preferences) */}
+        {!!user_note && (
+          <View style={styles.noteCard}>
+            <Text style={styles.noteTitle}>🎯 Ваш запит</Text>
+            <Text style={styles.noteText}>{user_note}</Text>
+          </View>
+        )}
+
+        {/* СПИСОК ІНГРЕДІЄНТІВ */}
         {ingredients.length > 0 && (
-          <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>🥣 Інгредієнти</Text>
+          <View style={styles.ingredientsSection}>
+            <Text style={styles.sectionTitle}>
+              🥣 Склад продукту ({ingredients.length})
+            </Text>
+
             {ingredients.map((item: any, i: number) => (
-              <View key={i} style={styles.ingredientBox}>
-                <Text style={styles.ingredientName}>{item.name}</Text>
-                {item.description && (
-                  <Text style={styles.textSmall}>📘 {item.description}</Text>
-                )}
-                {item.benefits && (
-                  <Text style={styles.textSmall}>✅ {item.benefits}</Text>
-                )}
-                {item.harm && (
-                  <Text style={styles.textSmall}>⚠️ {item.harm}</Text>
-                )}
+              <View key={i} style={styles.ingredientCard}>
+                <View style={styles.ingredientHeader}>
+                  <Text style={styles.ingredientName}>
+                    {i + 1}. {item.name}
+                  </Text>
+                  {!!item.translated_name && (
+                    <Text style={styles.ingredientTranslated}>
+                      {item.translated_name}
+                    </Text>
+                  )}
+                </View>
+
+                <Text style={styles.description}>{item.description}</Text>
+
+                <View style={styles.propertiesContainer}>
+                  <View style={styles.propertyRow}>
+                    <Text style={styles.propertyIcon}>✅</Text>
+                    <Text style={styles.propertyText}>{item.benefits}</Text>
+                  </View>
+                  <View style={styles.propertyRow}>
+                    <Text style={styles.propertyIcon}>⚠️</Text>
+                    <Text style={styles.propertyText}>{item.harm}</Text>
+                  </View>
+                </View>
               </View>
             ))}
           </View>
         )}
 
-        {/* Алергени */}
-        {allergens?.length > 0 && (
-          <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>⚠️ Алергени</Text>
-            {allergens.map((a: any, i: number) => (
-              <Text key={i} style={styles.textSmall}>
-                • {a.ingredient} — {a.allergen_type}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        {/* Непереносимості */}
-        {intolerances?.length > 0 && (
-          <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>🚫 Непереносимість</Text>
-            {intolerances.map((n: any, i: number) => (
-              <Text key={i} style={styles.textSmall}>
-                • {n.ingredient} — {n.intolerance_type}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        {/* Обмеження */}
-        {restrictions && Object.keys(restrictions).length > 0 && (
-          <View style={styles.sectionBox}>
-            <Text style={styles.sectionTitle}>🥗 Обмеження</Text>
-
-            {restrictions.dietary && (
-              <>
-                <Text style={styles.subsection}>Дієтичні:</Text>
-                {Object.entries(restrictions.dietary).map(([key, val]: any) => (
-                  <Text key={key} style={styles.textSmall}>
-                    • {translateKey(key)}: {val.suitable} — {val.explanation}
-                  </Text>
-                ))}
-              </>
-            )}
-
-            {restrictions.religious && (
-              <>
-                <Text style={styles.subsection}>Релігійні:</Text>
-                {Object.entries(restrictions.religious).map(([key, val]: any) => (
-                  <Text key={key} style={styles.textSmall}>
-                    • {translateKey(key)}: {val.suitable} — {val.explanation}
-                  </Text>
-                ))}
-              </>
-            )}
-
-            {restrictions.eating_style && (
-              <>
-                <Text style={styles.subsection}>Спосіб харчування:</Text>
-                {Object.entries(restrictions.eating_style).map(
-                  ([key, val]: any) => (
-                    <Text key={key} style={styles.textSmall}>
-                      • {translateKey(key)}: {val.suitable} — {val.explanation}
-                    </Text>
-                  )
-                )}
-              </>
-            )}
-          </View>
-        )}
-
+        {/* КНОПКА ПОВЕРНЕННЯ */}
         <Pressable
           onPress={() => router.push("/")}
           style={({ pressed }) => [
-            styles.button,
-            pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
+            styles.primaryButton,
+            pressed && { opacity: 0.85 },
           ]}
         >
-          <Text style={styles.buttonText}>Повернутися на головну</Text>
+          <Text style={styles.primaryButtonText}>Аналізувати інший продукт</Text>
         </Pressable>
       </ScrollView>
     </View>
   );
 }
 
-function translateKey(key: string): string {
-  const map: Record<string, string> = {
-    diabetes: "Діабет",
-    pregnancy: "Вагітність",
-    kidney_disease: "Захворювання нирок",
-    children_under_3_years: "Діти до 3 років",
-    hypertension: "Гіпертонія",
-    gastritis: "Гастрит",
-    ulcer: "Виразка",
-    pancreatitis: "Панкреатит",
-    gout: "Подагра",
-    oncology: "Онкологія",
-    obesity: "Ожиріння",
-    anorexia: "Анорексія",
-    islam: "Іслам",
-    judaism: "Юдаїзм",
-    hinduism: "Індуїзм",
-    vegans: "Вегани",
-    vegetarians: "Вегетаріанці",
-    raw_foodists: "Сироїди",
-  };
-  return map[key] || key;
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fbe9e7" },
+  container: {
+    flex: 1,
+    backgroundColor: "#fbe9e7",
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fbe9e7",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: "#2a5a43",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  errorText: {
+    color: "#d32f2f",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  errorCard: {
+    backgroundColor: "#ffebee",
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#ffcdd2",
+    marginBottom: 20,
+    alignItems: "center",
+    width: "100%",
+  },
+  errorCardTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#c62828",
+    marginBottom: 8,
+  },
+  errorCardText: {
+    fontSize: 16,
+    color: "#d32f2f",
+    textAlign: "center",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingTop: 50,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 15,
   },
   backButton: {
     width: 44,
@@ -233,57 +229,146 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   backIcon: { fontSize: 22, color: "#2a5a43" },
   headerTitle: { fontSize: 20, fontWeight: "800", color: "#2a5a43" },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
-  productName: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#2a5a43",
-    marginBottom: 10,
+
+  /* ТИТУЛКА ПРОДУКТУ */
+  titleContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+    marginTop: 10,
   },
-  sectionBox: {
-    backgroundColor: "#fff",
+  productName: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#1a3a2a",
+    textAlign: "center",
+  },
+  translatedName: {
+    fontSize: 16,
+    color: "#587b64",
+    marginTop: 4,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+
+  /* КАРТКА USER NOTE */
+  noteCard: {
+    backgroundColor: "#d7f2e3",
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 24,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2a5a43",
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+  noteTitle: {
+    fontSize: 16,
+    fontWeight: "800",
     color: "#2a5a43",
     marginBottom: 8,
   },
-  ingredientBox: { marginBottom: 10 },
-  ingredientName: { fontWeight: "700", fontSize: 16, color: "#333" },
-  text: { fontSize: 15, color: "#444", lineHeight: 20 },
-  textSmall: { fontSize: 14, color: "#555", marginBottom: 4 },
-  subsection: { marginTop: 8, fontWeight: "700", color: "#2a5a43" },
+  noteText: {
+    fontSize: 15,
+    color: "#1a3a2a",
+    lineHeight: 22,
+  },
+
+  /* СЕКЦІЯ ІНГРЕДІЄНТІВ */
+  ingredientsSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#2a5a43",
+    marginBottom: 12,
+  },
+  ingredientCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  ingredientHeader: {
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    paddingBottom: 8,
+  },
+  ingredientName: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#333",
+  },
+  ingredientTranslated: {
+    fontSize: 14,
+    color: "#777",
+    marginTop: 2,
+  },
+  description: {
+    fontSize: 14,
+    color: "#444",
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  propertiesContainer: {
+    backgroundColor: "#fafafa",
+    borderRadius: 10,
+    padding: 10,
+  },
+  propertyRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 6,
+  },
+  propertyIcon: {
+    fontSize: 14,
+    marginRight: 8,
+    marginTop: 2,
+  },
+  propertyText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#555",
+    lineHeight: 20,
+  },
+
+  /* КНОПКИ */
   button: {
     backgroundColor: "#2a5a43",
-    paddingVertical: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  primaryButton: {
+    backgroundColor: "#ec7d39", 
+    paddingVertical: 18,
     borderRadius: 16,
     alignItems: "center",
     marginTop: 10,
+    shadowColor: "#ec7d39",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonText: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fbe9e7",
-  },
-  errorText: {
-    color: "#d32f2f",
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 10,
+  primaryButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
   },
 });

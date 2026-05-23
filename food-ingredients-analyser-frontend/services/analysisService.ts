@@ -1,22 +1,24 @@
 import { apiRequest } from "../api/api";
 
-export async function sendImageWithPreferences(
-  imageUri: string, 
-  preferences: any
-) {
+export async function sendImageWithPreferences(images: string[], preferences: string[]) {
   const formData = new FormData();
-  
-  formData.append("file", {
-    uri: imageUri,
-    type: "image/jpeg",
-    name: "product_photo.jpg",
-  } as any);
+
+  images.forEach((uri, index) => {
+    formData.append("files", {
+      uri,
+      type: "image/jpeg",
+      name: `photo_${index}.jpg`,
+    } as any);
+  });
+
 
   formData.append("preferences", JSON.stringify(preferences));
 
   return apiRequest("/analyze", {
     method: "POST",
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+    },
     body: formData,
   });
 }

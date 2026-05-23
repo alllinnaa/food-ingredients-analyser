@@ -1,104 +1,38 @@
-from typing import Any, Dict
+import os
+import json
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+from PIL import Image
+from typing import List, Dict, Any
+
+load_dotenv()
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 class AIService:
-    """
-    Клас для взаємодії з AI-моделлю (наприклад, Gemini, GPT або OpenAI).
-    Поки що повертає фіктивну відповідь — імітацію JSON-аналізу продукту.
-    """
-
     @staticmethod
-    async def analyze_product(prompt: str, image_filename: str) -> Dict[str, Any]:
-        """
-        Отримує готовий промпт, передає його до моделі (тут — заглушка)
-        і повертає результат у форматі JSON.
-        """
-        print(f"\n📤 Відправка промпту до моделі для файлу: {image_filename}\n")
+    async def analyze_product(
+        prompt: str,
+        images: List[Image.Image]
+    ) -> Dict[str, Any]:
+        contents = [prompt] + images
 
-        # ⚙️ У майбутньому тут буде API-виклик до Gemini / OpenAI:
-        # response = gemini_client.generate_content(prompt)
-        # result_json = json.loads(response.text)
+        try:
+            response = await client.aio.models.generate_content(
+                model='gemini-2.5-pro', 
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json", 
+                    temperature=0.3, 
+                    thinking_config=types.ThinkingConfig(thinking_budget=512)
+                )
+            )
+            
+            return json.loads(response.text)
 
-        # 🔹 Тимчасова фіктивна відповідь (імітація відповіді від моделі)
-        result_json = {
-    "product_name": "Печиво з шоколадною крихтою",
-    "consumer_explanation": (
-        "До складу входить пшеничне борошно, вершкове масло, цукор, яйця та шоколадна крихта. "
-        "Містить дозволені харчові добавки (E322 — лецитин, E500 — розпушувач). "
-        "Не рекомендовано при діабеті, алергії на глютен або яйця. "
-        "Підходить для вегетаріанців, але не для веганів."
-    ),
-    "ingredients": [
-        {
-            "name": "Пшеничне борошно",
-            "description": "Основний інгредієнт, забезпечує структуру тіста.",
-            "benefits": "Джерело вуглеводів та рослинного білка.",
-            "harm": "Містить глютен, може викликати алергію або целіакію."
-        },
-        {
-            "name": "Вершкове масло",
-            "description": "Жир тваринного походження, додає смаку та ніжності.",
-            "benefits": "Містить вітаміни A, D, E.",
-            "harm": "Високий вміст насичених жирів, підвищує рівень холестерину."
-        },
-        {
-            "name": "Шоколадна крихта",
-            "description": "Суміш какао, цукру та какао-масла.",
-            "benefits": "Містить антиоксиданти, покращує настрій.",
-            "harm": "Високий вміст цукру, можливі алергії на какао або соєвий лецитин."
-        },
-        {
-            "name": "Яйця курячі",
-            "description": "Джерело білка та лецитину.",
-            "benefits": "Містять амінокислоти, важливі для організму.",
-            "harm": "Поширений алерген, не підходить для веганів."
-        }
-    ],
-    "intolerances": [
-        {"ingredient": "Пшеничне борошно", "intolerance_type": "Глютенова непереносимість (целіакія)"},
-        {"ingredient": "Вершкове масло", "intolerance_type": "Лактоза"}
-    ],
-    "restrictions": {
-        "dietary": {
-            "diabetes": {
-                "suitable": "ні",
-                "explanation": "Високий вміст цукру, протипоказаний при діабеті."
-            },
-            "pregnancy": {
-                "suitable": "так",
-                "explanation": "Безпечний при дотриманні гігієнічних норм."
-            },
-            "obesity": {
-                "suitable": "з обмеженнями",
-                "explanation": "Містить багато жиру і цукру, споживати помірно."
-            }
-        },
-        "religious": {
-            "islam": {
-                "suitable": "так",
-                "explanation": "Не містить заборонених інгредієнтів (халяль)."
-            },
-            "judaism": {
-                "suitable": "так",
-                "explanation": "Може вважатися кошерним, якщо інгредієнти сертифіковані."
-            },
-            "hinduism": {
-                "suitable": "залежить",
-                "explanation": "Може бути непридатним для суворих вегетаріанців через яйця."
-            }
-        },
-        "eating_style": {
-            "vegans": {
-                "suitable": "ні",
-                "explanation": "Містить яйця та вершкове масло."
-            },
-            "vegetarians": {
-                "suitable": "так",
-                "explanation": "Не містить м’яса або риби."
-            }
-        }
-    }
-}
-
-
-        print(f"📩 Отримана відповідь від моделі:\n{result_json}\n")
-        return result_json
+        except json.JSONDecodeError:
+            print("Помилка: Gemini повернув невалідний JSON")
+            return {"error": "Не вдалося розпізнати відповідь нейромережі."}
+        except Exception as e:
+            print(f"Помилка API Gemini: {str(e)}")
+            return {"error": f"Виникла помилка під час аналізу: {str(e)}"}

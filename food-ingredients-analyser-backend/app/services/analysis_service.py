@@ -1,28 +1,26 @@
-from app.schemas.preferences_sсhema import UserPreferences
+from typing import List, Dict, Any
+from PIL import Image
+
+from app.schemas.image_schema import ImageResponse
 from app.services.prompt_builder import PromptBuilder
 from app.services.ai_service import AIService
-from typing import Optional, Dict, Any
 
-async def generate_analysis_prompt(
-    image_filename: str,
-    preferences: Optional[UserPreferences] = None
+
+async def generate_analysis(
+    images_info: List[ImageResponse],
+    pil_images: List[Image.Image],
+    preferences: List[str]
 ) -> Dict[str, Any]:
-    """
-    Генерує фінальний промпт для аналізу продукту і викликає модель AI.
-    """
+
     prompt = PromptBuilder.build_prompt(preferences)
+    filenames = [img.filename for img in images_info]
 
-    print("\n" + "=" * 80)
-    print(f"📄 СФОРМОВАНИЙ ПРОМПТ ДЛЯ АНАЛІЗУ ФОТО: {image_filename}")
-    print("=" * 80)
-    print(prompt)
-    print("=" * 80 + "\n")
-
-    # ✅ Викликаємо AI модель (зараз — імітація)
-    result = await AIService.analyze_product(prompt, image_filename)
+    result = await AIService.analyze_product(
+        prompt=prompt,
+        images=pil_images
+    )
 
     return {
-        "image_filename": image_filename,
-        "prompt_preview": prompt[:500] + "...",  # лише для відлагодження
+        "image_filenames": filenames,
         "analysis_result": result
     }

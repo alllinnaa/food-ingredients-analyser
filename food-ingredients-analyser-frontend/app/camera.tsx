@@ -12,246 +12,149 @@ import {
   Text,
   View,
 } from "react-native";
-
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
 export default function CameraScreen() {
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     (async () => {
-      try {
-        await ImagePicker.getCameraPermissionsAsync();
-        await ImagePicker.getMediaLibraryPermissionsAsync();
-      } catch (error) {
-        console.error("Помилка при перевірці дозволів:", error);
-      }
+      await ImagePicker.getCameraPermissionsAsync();
+      await ImagePicker.getMediaLibraryPermissionsAsync();
     })();
   }, []);
 
+  const addImage = (uri: string) => {
+    if (images.length >= 4) {
+      Alert.alert("Ліміт", "Можна додати максимум 4 фото");
+      return;
+    }
+    setImages((prev) => [...prev, uri]);
+  };
+
   const launchCamera = async () => {
     try {
-      setLoading(true);
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Доступ заблоковано",
-          "Надай дозвіл для використання камери у налаштуваннях пристрою."
-        );
+        Alert.alert("Доступ заблоковано", "Надайте доступ до камери");
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
+        allowsEditing: true,       
         quality: 0.9,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        setImageUri(asset.uri);
-        setImageSize({ width: asset.width, height: asset.height });
+      if (!result.canceled && result.assets?.length > 0) {
+        addImage(result.assets[0].uri);
       }
     } catch {
-      Alert.alert("Помилка", "Не вдалося відкрити камеру.");
-    } finally {
-      setLoading(false);
+      Alert.alert("Помилка", "Не вдалося відкрити камеру");
     }
   };
 
   const openGallery = async () => {
     try {
-      setLoading(true);
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Доступ заблоковано",
-          "Надай дозвіл для перегляду галереї у налаштуваннях пристрою."
-        );
+        Alert.alert("Доступ заблоковано", "Надай доступ до галереї");
         return;
       }
 
+      const freeSlots = 4 - images.length;
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
+        allowsMultipleSelection: true,
+        selectionLimit: freeSlots,
+        orderedSelection: true,
         quality: 0.9,
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        setImageUri(asset.uri);
-        setImageSize({ width: asset.width, height: asset.height });
+      if (!result.canceled && result.assets) {
+        const uris = result.assets.map((a) => a.uri);
+        setImages((prev) => [...prev, ...uris].slice(0, 4));
       }
     } catch {
-      Alert.alert("Помилка", "Не вдалося відкрити галерею.");
+      Alert.alert("Помилка", "Не вдалося відкрити галерею");
+    }
+  };
+
+  const removeImage = (uri: string) => {
+    setImages((prev) => prev.filter((img) => img !== uri));
+  };
+
+  const sendToServer = async () => {
+    if (images.length === 0) {
+      Alert.alert("Помилка", "Додай хоча б одне фото");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      router.push({ pathname: "/preferences", params: { images: JSON.stringify(images) } });
+    } catch {
+      Alert.alert("Помилка", "Щось пішло не так");
     } finally {
       setLoading(false);
     }
   };
 
- const sendToServer = async () => {
-  if (!imageUri) {
-    Alert.alert("Помилка", "Спочатку зроби або вибери фото.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    router.push({
-      pathname: "/preferences",
-      params: { imageUri: imageUri }
-    });
-  } catch (error) {
-    console.error("Помилка:", error);
-    Alert.alert("Помилка", "Щось пішло не так.");
-  } finally {
-    setLoading(false);
-  }
-};
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
+
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>Розпізнавання</Text>
-          <Text style={styles.subtitle}>Додай фото продукту</Text>
+          <Text style={styles.subtitle}>Сфотографуй склад продукту</Text>
         </View>
-        <View style={styles.placeholder} />
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {!imageUri ? (
-          <>
-            <View style={styles.placeholderBox}>
-              <View style={styles.iconCircle}>
-                <Text style={styles.cameraIcon}>📸</Text>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 }]}>
+        <Text style={styles.infoText}>
+          Додай від 1 до 4 фото: склад продукту (зроби кілька фото за необхідністю, щоб всі інгредієнти були присутні), назву (не обов'язково)
+        </Text>
+
+        {images.length > 0 && (
+          <View style={styles.imagesContainer}>
+            {images.map((uri) => (
+              <View key={uri} style={styles.imageWrapper}>
+                <Image source={{ uri }} style={styles.image} />
+                <Pressable style={styles.removeButton} onPress={() => removeImage(uri)}>
+                  <Text style={styles.removeText}>✕</Text>
+                </Pressable>
               </View>
-              <Text style={styles.placeholderText}>
-                Зроби фото етикетки або вибери з галереї
-              </Text>
-              <Text style={styles.placeholderHint}>
-                Переконайся, що етикетка добре видима та освітлена
-              </Text>
-            </View>
-
-            <View style={styles.buttonsContainer}>
-              <Pressable
-                onPress={launchCamera}
-                disabled={loading}
-                style={({ pressed }) => [
-                  styles.actionButton,
-                  styles.cameraButton,
-                  pressed && styles.buttonPressed,
-                  loading && styles.buttonDisabled,
-                ]}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <View style={styles.buttonIconContainer}>
-                      <Text style={styles.buttonIcon}>📷</Text>
-                    </View>
-                    <Text style={styles.buttonText}>Камера</Text>
-                  </>
-                )}
-              </Pressable>
-
-              <Pressable
-                onPress={openGallery}
-                disabled={loading}
-                style={({ pressed }) => [
-                  styles.actionButton,
-                  styles.galleryButton,
-                  pressed && styles.buttonPressed,
-                  loading && styles.buttonDisabled,
-                ]}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#2a5a43" size="small" />
-                ) : (
-                  <>
-                    <View style={styles.buttonIconContainer}>
-                      <Text style={styles.buttonIcon}>🖼️</Text>
-                    </View>
-                    <Text style={[styles.buttonText, styles.galleryButtonText]}>
-                      Галерея
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-          </>
-        ) : (
-          <View style={styles.previewSection}>
-            <View style={[
-              styles.previewContainer,
-              imageSize && {
-                height: Math.min(500, (width - 40) * (imageSize.height / imageSize.width))
-              }
-            ]}>
-              <Image
-                source={{ uri: imageUri }}
-                style={styles.imagePreview}
-                resizeMode="cover"
-              />
-              <View style={styles.previewOverlay}>
-                <View style={styles.successBadge}>
-                  <Text style={styles.successIcon}>✓</Text>
-                  <Text style={styles.successText}>Фото готове</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.actionsContainer}>
-              <Pressable
-                onPress={sendToServer}
-                style={({ pressed }) => [
-                  styles.primaryAction,
-                  pressed && styles.buttonPressed,
-                ]}
-              >
-                <Text style={styles.primaryActionText}>Проаналізувати</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  setImageUri(null);
-                  setImageSize(null);
-                }}
-                style={({ pressed }) => [
-                  styles.secondaryAction,
-                  pressed && styles.buttonPressed,
-                ]}
-              >
-                <Text style={styles.secondaryActionText}>Вибрати інше фото</Text>
-              </Pressable>
-            </View>
+            ))}
           </View>
         )}
+
+        <View style={styles.buttonsContainer}>
+          <Pressable onPress={launchCamera} style={({ pressed }) => [styles.button, styles.cameraButton, pressed && styles.pressed]}>
+            <Text style={styles.buttonText}>📷 Камера</Text>
+          </Pressable>
+          <Pressable onPress={openGallery} style={({ pressed }) => [styles.button, styles.galleryButton, pressed && styles.pressed]}>
+            <Text style={styles.galleryText}>🖼 Галерея</Text>
+          </Pressable>
+        </View>
+
+        <Pressable onPress={sendToServer} disabled={loading} style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Далі</Text>}
+        </Pressable>
       </ScrollView>
 
-      {!imageUri && (
-        <View style={styles.tipContainer}>
-          <Text style={styles.tipIcon}>💡</Text>
-          <Text style={styles.tipText}>
-            Для найкращого результату тримай камеру на відстані 15-20 см від
-            етикетки. Роби фото при гарному освітленні
-          </Text>
-        </View>
-      )}
-    </View>
+      <View style={[styles.tip, { paddingBottom: insets.bottom + 12 }]}> 
+        <Text style={styles.tipText}>💡 Фото має бути чітким, а текст добре видно</Text>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -263,10 +166,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 50,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingVertical: 14,
   },
   backButton: {
     width: 44,
@@ -275,232 +176,117 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   backIcon: {
-    fontSize: 24,
-    color: "#2a5a43",
+    fontSize: 22,
   },
   headerTextContainer: {
     flex: 1,
     alignItems: "center",
   },
-  placeholder: {
-    width: 44,
-  },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
-    color: "#2a5a43",
   },
   subtitle: {
     fontSize: 14,
-    color: "#6E7571",
-    marginTop: 2,
-  },
-  scrollView: {
-    flex: 1,
+    color: "#666",
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 30,
+    padding: 20,
   },
-  placeholderBox: {
-    height: 450,
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: "#e8e8e8",
-    borderStyle: "dashed",
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#fbe9e7",
-    justifyContent: "center",
-    alignItems: "center",
+  infoText: {
+    textAlign: "center",
     marginBottom: 16,
-  },
-  cameraIcon: {
-    fontSize: 40,
-  },
-  placeholderText: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#2a5a43",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  placeholderHint: {
-    fontSize: 14,
-    color: "#6E7571",
-    textAlign: "center",
+    color: "#555",
     lineHeight: 20,
+  },
+  imagesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 20,
+  },
+  imageWrapper: {
+    width: (width - 60) / 2,
+    height: 150,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: "#fff",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  removeButton: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    borderRadius: 12,
+    paddingHorizontal: 6,
+  },
+  removeText: {
+    color: "#fff",
+    fontSize: 14,
   },
   buttonsContainer: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
     marginBottom: 20,
   },
-  actionButton: {
+  button: {
     flex: 1,
-    height: 110,
-    borderRadius: 20,
-    justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 5,
   },
   cameraButton: {
     backgroundColor: "#ec7d39",
   },
   galleryButton: {
     backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#a6d4c3",
-  },
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonIconContainer: {
-    marginBottom: 8,
-  },
-  buttonIcon: {
-    fontSize: 32,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: "700",
     color: "#fff",
+    fontWeight: "700",
   },
-  galleryButtonText: {
-    color: "#2a5a43",
+  galleryText: {
+    color: "#000",
+    fontWeight: "700",
   },
-  debugText: {
-    fontSize: 10,
-    color: "#f00",
-    paddingHorizontal: 20,
-    marginBottom: 5,
+  submitButton: {
+    backgroundColor: "#2a5a43",
+    padding: 18,
+    borderRadius: 16,
+    alignItems: "center",
   },
-  previewSection: {
-    width: "100%",
+  submitText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
-  previewContainer: {
-    width: "100%",
-    height: 600,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    overflow: "hidden",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-    position: "relative",
+  pressed: {
+    opacity: 0.8,
   },
-  imagePreview: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#f0f0f0",
-  },
-  previewOverlay: {
+  tip: {
     position: "absolute",
-    top: 16,
+    left: 16,
     right: 16,
-  },
-  successBadge: {
-    flexDirection: "row",
+    bottom: 0,
     alignItems: "center",
-    backgroundColor: "#2a5a43",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  successIcon: {
-    fontSize: 16,
-    color: "#fff",
-    marginRight: 6,
-  },
-  successText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  actionsContainer: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  primaryAction: {
-    backgroundColor: "#2a5a43",
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#2a5a43",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  primaryActionText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  secondaryAction: {
-    backgroundColor: "#fff",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#e8e8e8",
-  },
-  secondaryActionText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#6E7571",
-  },
-  tipContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tipIcon: {
-    fontSize: 20,
-    marginRight: 12,
   },
   tipText: {
-    flex: 1,
     fontSize: 13,
-    color: "#6E7571",
-    lineHeight: 18,
+    color: "#666",
+    textAlign: "center",
+    backgroundColor: "#fff7f4",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    overflow: "hidden",
   },
 });
