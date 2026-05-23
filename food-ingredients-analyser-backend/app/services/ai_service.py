@@ -1,13 +1,15 @@
-import os
 import json
-from dotenv import load_dotenv
+import asyncio
 from google import genai
 from google.genai import types
+from google.api_core.exceptions import ServiceUnavailable, ResourceExhausted
 from PIL import Image
 from typing import List, Dict, Any
 
-load_dotenv()
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+from app.core.config import settings
+
+client = genai.Client(api_key=settings.gemini_api_key)
+
 
 class AIService:
     @staticmethod
@@ -18,21 +20,26 @@ class AIService:
         contents = [prompt] + images
 
         try:
-            response = await client.aio.models.generate_content(
-                model='gemini-2.5-pro', 
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json", 
-                    temperature=0.3, 
-                    thinking_config=types.ThinkingConfig(thinking_budget=512)
-                )
+            response = await asyncio.wait_for(
+                client.aio.models.generate_content(
+                    model='gemini-2.5-pro',
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.3,
+                        thinking_config=types.ThinkingConfig(thinking_budget=512)
+                    )
+                ),
+                timeout=30
             )
-            
+
             return json.loads(response.text)
 
+        except asyncio.TimeoutError:
+            raise RuntimeError("Час очікування відповіді вичерпано, спробуйте пізніше")
+        except ServiceUnavailable:
+            raise RuntimeError("Сервіс аналізу тимчасово недоступний, спробуйте пізніше")
+        except ResourceExhausted:
+            raise RuntimeError("Перевищено ліміт запитів, спробуйте пізніше")
         except json.JSONDecodeError:
-            print("Помилка: Gemini повернув невалідний JSON")
-            return {"error": "Не вдалося розпізнати відповідь нейромережі."}
-        except Exception as e:
-            print(f"Помилка API Gemini: {str(e)}")
-            return {"error": f"Виникла помилка під час аналізу: {str(e)}"}
+            raise RuntimeError("Не вдалося розпізнати відповідь нейромережі")

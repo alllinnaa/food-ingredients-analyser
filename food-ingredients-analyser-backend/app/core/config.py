@@ -1,1 +1,8 @@
-#Тут зберігаються налаштування середовища, підключення до бази даних, налаштування логування, CORS тощо.
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    gemini_api_key: str
+
+    model_config = {"env_file": ".env"}
+
+settings = Settings()
