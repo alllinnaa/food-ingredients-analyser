@@ -20,7 +20,6 @@ export default function AnalysisResultScreen() {
     try {
       if (params.result) {
         const parsed = JSON.parse(params.result);
-        console.log("✅ RESULT:", parsed);
         setData(parsed);
       } else {
         setError("Дані не отримані");
@@ -87,6 +86,13 @@ export default function AnalysisResultScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>Результат аналізу</Text>
         <View style={{ width: 44 }} />
+      </View>
+      {/* ПОПЕРЕДЖЕННЯ */}
+      <View style={styles.warningBanner}>
+        <Text style={styles.warningIcon}>🤖</Text>
+        <Text style={styles.warningText}>
+          Аналіз виконано штучним інтелектом. Результат може містити неточності. Будьте уважні та консультуйтесь з лікарем за потреби.
+        </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -355,7 +361,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   primaryButton: {
-    backgroundColor: "#ec7d39", 
+    backgroundColor: "#ec7d39",
     paddingVertical: 18,
     borderRadius: 16,
     alignItems: "center",
@@ -370,5 +376,26 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "800",
+  },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#f7d6d2",
+    borderLeftWidth: 4,
+    borderLeftColor: "#a1949d",
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  warningIcon: {
+    fontSize: 16,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#795548",
+    lineHeight: 18,
   },
 });

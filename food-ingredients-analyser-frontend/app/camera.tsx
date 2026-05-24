@@ -6,6 +6,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ const { width } = Dimensions.get("window");
 export default function CameraScreen() {
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -47,7 +49,7 @@ export default function CameraScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,       
+        allowsEditing: true,
         quality: 0.9,
       });
 
@@ -78,7 +80,13 @@ export default function CameraScreen() {
 
       if (!result.canceled && result.assets) {
         const uris = result.assets.map((a) => a.uri);
-        setImages((prev) => [...prev, ...uris].slice(0, 4));
+        const newImages = [...images, ...uris].slice(0, 4);
+
+        if (images.length + uris.length > 4) {
+          Alert.alert("Ліміт", `Додано ${newImages.length - images.length} фото, максимум 4`);
+        }
+
+        setImages(newImages);
       }
     } catch {
       Alert.alert("Помилка", "Не вдалося відкрити галерею");
@@ -127,12 +135,12 @@ export default function CameraScreen() {
         {images.length > 0 && (
           <View style={styles.imagesContainer}>
             {images.map((uri) => (
-              <View key={uri} style={styles.imageWrapper}>
+              <Pressable key={uri} style={styles.imageWrapper} onPress={() => setPreviewUri(uri)}>
                 <Image source={{ uri }} style={styles.image} />
                 <Pressable style={styles.removeButton} onPress={() => removeImage(uri)}>
                   <Text style={styles.removeText}>✕</Text>
                 </Pressable>
-              </View>
+              </Pressable>
             ))}
           </View>
         )}
@@ -151,9 +159,21 @@ export default function CameraScreen() {
         </Pressable>
       </ScrollView>
 
-      <View style={[styles.tip, { paddingBottom: insets.bottom + 12 }]}> 
+      <View style={[styles.tip, { paddingBottom: insets.bottom + 12 }]}>
         <Text style={styles.tipText}>💡 Фото має бути чітким, а текст добре видно</Text>
       </View>
+
+      {/* ПЕРЕГЛЯД ФОТО */}
+      <Modal visible={!!previewUri} transparent animationType="fade">
+        <Pressable style={styles.previewOverlay} onPress={() => setPreviewUri(null)}>
+          <Image
+            source={{ uri: previewUri ?? "" }}
+            style={styles.previewImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.previewHint}>Натисни будь-де щоб закрити</Text>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -288,5 +308,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 14,
     overflow: "hidden",
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: "85%",
+  },
+  previewHint: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    marginTop: 16,
   },
 });
