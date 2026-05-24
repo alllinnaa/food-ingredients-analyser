@@ -25,7 +25,7 @@ export default function AnalysisResultScreen() {
         setError("Дані не отримані");
       }
     } catch (e) {
-      console.error("❌ JSON error:", e);
+      console.error("JSON error:", e);
       setError("Помилка обробки результату");
     }
   }, [params.result]);
@@ -50,11 +50,9 @@ export default function AnalysisResultScreen() {
     );
   }
 
-  // Витягуємо дані з обгортки analysis_result, якщо вона прийшла з бекенду
   const resultData = data.analysis_result ? data.analysis_result : data;
   const checkError = resultData.error;
 
-  // Якщо бекенд (або промпт) повернув помилку
   if (checkError) {
     return (
       <View style={styles.centered}>
@@ -69,7 +67,6 @@ export default function AnalysisResultScreen() {
     );
   }
 
-  // Беремо всі необхідні поля зі справжніх даних
   const {
     product_name,
     translated_product_name,
@@ -87,7 +84,6 @@ export default function AnalysisResultScreen() {
         <Text style={styles.headerTitle}>Результат аналізу</Text>
         <View style={{ width: 44 }} />
       </View>
-      {/* ПОПЕРЕДЖЕННЯ */}
       <View style={styles.warningBanner}>
         <Text style={styles.warningIcon}>🤖</Text>
         <Text style={styles.warningText}>
@@ -96,7 +92,6 @@ export default function AnalysisResultScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* БЛОК НАЗВИ ПРОДУКТУ */}
         {(!!product_name || !!translated_product_name) && (
           <View style={styles.titleContainer}>
             {!!product_name && (
@@ -110,7 +105,6 @@ export default function AnalysisResultScreen() {
           </View>
         )}
 
-        {/* ВІДПОВІДЬ НА ЗАПИТ КОРИСТУВАЧА (Preferences) */}
         {!!user_note && (
           <View style={styles.noteCard}>
             <Text style={styles.noteTitle}>🎯 Ваш запит</Text>
@@ -118,7 +112,6 @@ export default function AnalysisResultScreen() {
           </View>
         )}
 
-        {/* СПИСОК ІНГРЕДІЄНТІВ */}
         {ingredients.length > 0 && (
           <View style={styles.ingredientsSection}>
             <Text style={styles.sectionTitle}>
@@ -155,7 +148,6 @@ export default function AnalysisResultScreen() {
           </View>
         )}
 
-        {/* КНОПКА ПОВЕРНЕННЯ */}
         <Pressable
           onPress={() => router.push("/")}
           style={({ pressed }) => [
@@ -241,7 +233,6 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 20, fontWeight: "800", color: "#2a5a43" },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
 
-  /* ТИТУЛКА ПРОДУКТУ */
   titleContainer: {
     alignItems: "center",
     marginBottom: 20,
@@ -261,7 +252,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  /* КАРТКА USER NOTE */
   noteCard: {
     backgroundColor: "#d7f2e3",
     borderRadius: 16,
@@ -282,7 +272,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  /* СЕКЦІЯ ІНГРЕДІЄНТІВ */
   ingredientsSection: {
     marginBottom: 20,
   },
@@ -347,7 +336,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  /* КНОПКИ */
   button: {
     backgroundColor: "#2a5a43",
     paddingVertical: 14,

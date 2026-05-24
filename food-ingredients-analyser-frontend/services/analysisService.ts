@@ -11,7 +11,6 @@ export async function sendImageWithPreferences(images: string[], preferences: st
     } as any);
   });
 
-
   formData.append("preferences", JSON.stringify(preferences));
 
   return apiRequest("/analyze", {

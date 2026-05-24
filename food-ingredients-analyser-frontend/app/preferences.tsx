@@ -127,7 +127,6 @@ export default function PreferencesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: "#fbe9e7" }}>
       <View style={styles.container}>
-        {/* HEADER */}
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backIcon}>←</Text>
@@ -168,7 +167,6 @@ export default function PreferencesScreen() {
             ))}
           </View>
 
-          {/* СВОЄ */}
           <Text style={styles.customLabel}>Є особливий запит?</Text>
           <TextInput
             placeholder="наприклад: чи можна при серцевій недостатності, чи сильно калорійний..."
@@ -180,7 +178,6 @@ export default function PreferencesScreen() {
             textAlignVertical="top"
           />
 
-          {/* КНОПКА */}
           <Pressable
             onPress={sendToServer}
             disabled={loading}
@@ -193,7 +190,6 @@ export default function PreferencesScreen() {
           </Pressable>
         </ScrollView>
 
-        {/* LOADING OVERLAY */}
         <Modal transparent visible={loading} animationType="fade">
           <View style={styles.overlay}>
             <View style={styles.loadingCard}>
