@@ -30,7 +30,7 @@ class AIService:
                         thinking_config=types.ThinkingConfig(thinking_budget=512)
                     )
                 ),
-                timeout=30
+                timeout=50
             )
 
             return json.loads(response.text)
