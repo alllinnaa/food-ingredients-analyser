@@ -100,7 +100,7 @@ export default function PreferencesScreen() {
       }
 
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Час очікування вичерпано")), 30000)
+        setTimeout(() => reject(new Error("Час очікування вичерпано")), 50000)
       );
 
       const data = await Promise.race([
