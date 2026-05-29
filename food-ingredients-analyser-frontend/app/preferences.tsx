@@ -115,8 +115,8 @@ export default function PreferencesScreen() {
     } catch (error: any) {
       const message =
         error?.message === "Час очікування вичерпано"
-          ? "Сервер не відповідає. Спробуйте пізніше"
-          : "Не вдалося відправити дані";
+          ? "Сервер не відповідає. Спробуйте ще раз"
+          : "Не вдалося відправити дані, наразі високий попит на модель. Спробуйте ще раз через 1-2 хвилини";
       Alert.alert("Помилка", message);
     } finally {
       clearInterval(interval);
@@ -170,6 +170,7 @@ export default function PreferencesScreen() {
           <Text style={styles.customLabel}>Є особливий запит?</Text>
           <TextInput
             placeholder="наприклад: чи можна при серцевій недостатності, чи сильно калорійний..."
+            placeholderTextColor="#999"
             value={customInput}
             onChangeText={setCustomInput}
             style={styles.textarea}
