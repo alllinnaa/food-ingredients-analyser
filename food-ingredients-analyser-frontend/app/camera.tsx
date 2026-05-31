@@ -65,7 +65,7 @@ export default function CameraScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Доступ заблоковано", "Надай доступ до галереї");
+        Alert.alert("Доступ заблоковано", "Надайте доступ до галереї");
         return;
       }
 
@@ -99,7 +99,7 @@ export default function CameraScreen() {
 
   const sendToServer = async () => {
     if (images.length === 0) {
-      Alert.alert("Помилка", "Додай хоча б одне фото");
+      Alert.alert("Помилка", "Додайте хоча б одне фото");
       return;
     }
 
@@ -122,14 +122,14 @@ export default function CameraScreen() {
 
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>Розпізнавання</Text>
-          <Text style={styles.subtitle}>Сфотографуй склад продукту</Text>
+          <Text style={styles.subtitle}>Сфотографуйте склад продукту</Text>
         </View>
         <View style={{ width: 44 }} />
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 }]}>
         <Text style={styles.infoText}>
-          Додай від 1 до 4 фото: склад продукту (зроби кілька фото за необхідністю, щоб всі інгредієнти були присутні), назву (не обов'язково)
+          Додайте від 1 до 4 фото: склад продукту (зробіть кілька фото за необхідністю, щоб всі інгредієнти були присутні), назву (не обов'язково)
         </Text>
 
         {images.length > 0 && (
@@ -171,7 +171,7 @@ export default function CameraScreen() {
             style={styles.previewImage}
             resizeMode="contain"
           />
-          <Text style={styles.previewHint}>Натисни будь-де щоб закрити</Text>
+          <Text style={styles.previewHint}>Натисніть будь-де щоб закрити</Text>
         </Pressable>
       </Modal>
     </SafeAreaView>

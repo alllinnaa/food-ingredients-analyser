@@ -116,7 +116,7 @@ export default function PreferencesScreen() {
       const message =
         error?.message === "Час очікування вичерпано"
           ? "Сервер не відповідає. Спробуйте ще раз"
-          : "Не вдалося відправити дані, наразі високий попит на модель. Спробуйте ще раз через 1-2 хвилини";
+          : error?.message || "Не вдалося відправити дані";
       Alert.alert("Помилка", message);
     } finally {
       clearInterval(interval);
