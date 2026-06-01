@@ -1,1 +1,1 @@
-export const API_URL = "https://food-ingredients-analyser.onrender.com"
+export const API_URL = "https://gleaming-vitality-production.up.railway.app"
