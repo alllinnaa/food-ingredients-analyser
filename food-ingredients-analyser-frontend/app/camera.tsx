@@ -137,7 +137,14 @@ export default function CameraScreen() {
             {images.map((uri) => (
               <Pressable key={uri} style={styles.imageWrapper} onPress={() => setPreviewUri(uri)}>
                 <Image source={{ uri }} style={styles.image} />
-                <Pressable style={styles.removeButton} onPress={() => removeImage(uri)}>
+                <Pressable
+                  style={styles.removeButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    removeImage(uri);
+                  }}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
                   <Text style={styles.removeText}>✕</Text>
                 </Pressable>
               </Pressable>
@@ -244,12 +251,17 @@ const styles = StyleSheet.create({
     top: 6,
     right: 6,
     backgroundColor: "rgba(0,0,0,0.75)",
-    borderRadius: 12,
-    paddingHorizontal: 6,
+    borderRadius: 30,
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
   },
   removeText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 22,
+    fontWeight: "700",
+    lineHeight: 20,
   },
   buttonsContainer: {
     flexDirection: "row",

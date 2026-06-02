@@ -1,13 +1,15 @@
 import json
 import asyncio
+import logging
 from google import genai
 from google.genai import types
-from google.api_core.exceptions import ServiceUnavailable, ResourceExhausted
+from google.api_core.exceptions import ServiceUnavailable, ResourceExhausted, DeadlineExceeded, ServerError
 from PIL import Image
 from typing import List, Dict, Any
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 client = genai.Client(api_key=settings.gemini_api_key)
 
 
@@ -36,10 +38,29 @@ class AIService:
             return json.loads(response.text)
 
         except asyncio.TimeoutError:
-            raise RuntimeError("Час очікування відповіді вичерпано, спробуйте пізніше")
-        except ServiceUnavailable:
-            raise RuntimeError("Сервіс аналізу тимчасово недоступний, спробуйте пізніше")
-        except ResourceExhausted:
-            raise RuntimeError("Перевищено ліміт запитів, спробуйте пізніше")
-        except json.JSONDecodeError:
-            raise RuntimeError("Не вдалося розпізнати відповідь нейромережі")
+            logger.error("Gemini timeout: відповідь не отримана за 50 секунд")
+            raise RuntimeError("Час очікування відповіді вичерпано. Спробуйте ще раз — зазвичай допомагає")
+
+        except ResourceExhausted as e:
+            logger.error(f"Gemini ResourceExhausted (ліміт запитів): {e}")
+            raise RuntimeError("Зараз дуже багато запитів до сервісу аналізу. Спробуйте через 1–2 хвилини")
+
+        except ServiceUnavailable as e:
+            logger.error(f"Gemini ServiceUnavailable: {e}")
+            raise RuntimeError("Сервіс аналізу тимчасово недоступний. Спробуйте через кілька хвилин")
+
+        except DeadlineExceeded as e:
+            logger.error(f"Gemini DeadlineExceeded: {e}")
+            raise RuntimeError("Час очікування відповіді вичерпано. Спробуйте ще раз")
+
+        except ServerError as e:
+            logger.error(f"Gemini ServerError (помилка на стороні Google): {e}")
+            raise RuntimeError("Сервіс аналізу тимчасово не працює на стороні Google. Спробуйте через кілька хвилин")
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error від Gemini: {e}")
+            raise RuntimeError("Не вдалося розпізнати відповідь нейромережі. Спробуйте ще раз")
+
+        except Exception as e:
+            logger.error(f"Невідома помилка Gemini ({type(e).__name__}): {e}")
+            raise RuntimeError("Під час аналізу сталася непередбачена помилка. Спробуйте ще раз")

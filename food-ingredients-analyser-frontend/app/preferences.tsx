@@ -99,24 +99,14 @@ export default function PreferencesScreen() {
         preferences.push(customInput.trim());
       }
 
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Час очікування вичерпано")), 50000)
-      );
-
-      const data = await Promise.race([
-        sendImageWithPreferences(images, preferences),
-        timeout,
-      ]);
+      const data = await sendImageWithPreferences(images, preferences);
 
       router.push({
         pathname: "/analysisResult",
         params: { result: JSON.stringify(data) },
       });
     } catch (error: any) {
-      const message =
-        error?.message === "Час очікування вичерпано"
-          ? "Сервер не відповідає. Спробуйте ще раз"
-          : error?.message || "Не вдалося відправити дані";
+      const message = error?.message || "Не вдалося відправити дані";
       Alert.alert("Помилка", message);
     } finally {
       clearInterval(interval);

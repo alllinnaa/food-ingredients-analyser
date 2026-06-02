@@ -60,7 +60,7 @@ export default function AnalysisResultScreen() {
           <Text style={styles.errorCardTitle}>Упс!</Text>
           <Text style={styles.errorCardText}>{checkError}</Text>
         </View>
-        <Pressable onPress={() => router.back()} style={styles.button}>
+        <Pressable onPress={() => router.push("/camera")} style={styles.button}>
           <Text style={styles.buttonText}>Спробувати інше фото</Text>
         </Pressable>
       </View>
