@@ -13,14 +13,16 @@ import {
   Text,
   View,
 } from "react-native";
+import ImageCropPicker from "react-native-image-crop-picker";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export default function CameraScreen() {
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -49,12 +51,12 @@ export default function CameraScreen() {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.9,
       });
 
       if (!result.canceled && result.assets?.length > 0) {
-        addImage(result.assets[0].uri);
+        setCapturedUri(result.assets[0].uri);
       }
     } catch {
       Alert.alert("Помилка", "Не вдалося відкрити камеру");
@@ -93,6 +95,33 @@ export default function CameraScreen() {
     }
   };
 
+  const cropCaptured = async () => {
+    if (!capturedUri) return;
+    try {
+      const result = await ImageCropPicker.openCropper({
+        path: capturedUri,
+        mediaType: "photo",
+        cropping: true,
+        freeStyleCropEnabled: true,
+        showCropGuidelines: true,
+        cropperToolbarTitle: "Обрізати фото",
+      });
+      addImage(result.path);
+      setCapturedUri(null);
+    } catch (e: any) {
+      if (e?.code !== "E_PICKER_CANCELLED") {
+        Alert.alert("Помилка", "Не вдалося обрізати фото");
+      }
+    }
+  };
+
+  const useAsIs = () => {
+    if (capturedUri) {
+      addImage(capturedUri);
+      setCapturedUri(null);
+    }
+  };
+
   const removeImage = (uri: string) => {
     setImages((prev) => prev.filter((img) => img !== uri));
   };
@@ -102,7 +131,6 @@ export default function CameraScreen() {
       Alert.alert("Помилка", "Додайте хоча б одне фото");
       return;
     }
-
     try {
       setLoading(true);
       router.push({ pathname: "/preferences", params: { images: JSON.stringify(images) } });
@@ -119,7 +147,6 @@ export default function CameraScreen() {
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
-
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>Розпізнавання</Text>
           <Text style={styles.subtitle}>Сфотографуйте склад продукту</Text>
@@ -139,10 +166,7 @@ export default function CameraScreen() {
                 <Image source={{ uri }} style={styles.image} />
                 <Pressable
                   style={styles.removeButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    removeImage(uri);
-                  }}
+                  onPress={(e) => { e.stopPropagation(); removeImage(uri); }}
                   hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
                   <Text style={styles.removeText}>✕</Text>
@@ -153,15 +177,25 @@ export default function CameraScreen() {
         )}
 
         <View style={styles.buttonsContainer}>
-          <Pressable onPress={launchCamera} style={({ pressed }) => [styles.button, styles.cameraButton, pressed && styles.pressed]}>
+          <Pressable
+            onPress={launchCamera}
+            style={({ pressed }) => [styles.button, styles.cameraButton, pressed && styles.pressed]}
+          >
             <Text style={styles.buttonText}>📷 Камера</Text>
           </Pressable>
-          <Pressable onPress={openGallery} style={({ pressed }) => [styles.button, styles.galleryButton, pressed && styles.pressed]}>
+          <Pressable
+            onPress={openGallery}
+            style={({ pressed }) => [styles.button, styles.galleryButton, pressed && styles.pressed]}
+          >
             <Text style={styles.galleryText}>🖼 Галерея</Text>
           </Pressable>
         </View>
 
-        <Pressable onPress={sendToServer} disabled={loading} style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}>
+        <Pressable
+          onPress={sendToServer}
+          disabled={loading}
+          style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}
+        >
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Далі</Text>}
         </Pressable>
       </ScrollView>
@@ -170,7 +204,45 @@ export default function CameraScreen() {
         <Text style={styles.tipText}>💡 Фото має бути чітким, а текст добре видно</Text>
       </View>
 
-      {/* ПЕРЕГЛЯД ФОТО */}
+      <Modal visible={!!capturedUri} animationType="slide">
+        <SafeAreaView style={styles.capturedContainer}>
+          <Text style={styles.capturedTitle}>Фото зроблено 📸</Text>
+          <Text style={styles.capturedSubtitle}>
+            Бажаєте обрізати фото перед додаванням?
+          </Text>
+
+          {capturedUri && (
+            <Image
+              source={{ uri: capturedUri }}
+              style={styles.capturedImage}
+              resizeMode="contain"
+            />
+          )}
+
+          <View style={styles.capturedButtons}>
+            <Pressable
+              onPress={cropCaptured}
+              style={({ pressed }) => [styles.cropButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.cropButtonText}>✂️ Обрізати</Text>
+            </Pressable>
+            <Pressable
+              onPress={useAsIs}
+              style={({ pressed }) => [styles.useAsIsButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.useAsIsText}>✓ Зберегти як є</Text>
+            </Pressable>
+          </View>
+
+          <Pressable
+            onPress={() => { setCapturedUri(null); launchCamera(); }}
+            style={styles.retakeButton}
+          >
+            <Text style={styles.retakeText}>↩ Зробити ще раз</Text>
+          </Pressable>
+        </SafeAreaView>
+      </Modal>
+
       <Modal visible={!!previewUri} transparent animationType="fade">
         <Pressable style={styles.previewOverlay} onPress={() => setPreviewUri(null)}>
           <Image
@@ -320,6 +392,67 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 14,
     overflow: "hidden",
+  },
+  capturedContainer: {
+    flex: 1,
+    backgroundColor: "#fbe9e7",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  capturedTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  capturedSubtitle: {
+    fontSize: 15,
+    color: "#555",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  capturedImage: {
+    width: width - 48,
+    height: height * 0.45,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  capturedButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+    width: "100%",
+  },
+  cropButton: {
+    flex: 1,
+    backgroundColor: "#ec7d39",
+    padding: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  cropButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  useAsIsButton: {
+    flex: 1,
+    backgroundColor: "#2a5a43",
+    padding: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  useAsIsText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  retakeButton: {
+    padding: 12,
+  },
+  retakeText: {
+    color: "#888",
+    fontSize: 15,
   },
   previewOverlay: {
     flex: 1,
